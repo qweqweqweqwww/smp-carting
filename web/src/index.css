@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-50:  #EBF4FF;
+    --brand-100: #DBEAFE;
+    --brand-200: #BFDBFE;
+    --brand-300: #93C5FD;
+    --brand-400: #60A5FA;
+    --brand-500: #2B87F7;
+    --brand-600: #1D6FD4;
+    --brand-700: #1558AB;
+    --brand-800: #0E4182;
+    --brand-900: #082B59;
+
+    --c-emergency:    #DC2626;
+    --c-emergency-bg: #FEF2F2;
+    --c-warning:      #D97706;
+    --c-warning-bg:   #FFFBEB;
+    --c-success:      #059669;
+    --c-success-bg:   #ECFDF5;
+
+    --bg:           #F4F6FA;
+    --bg-elev:      #FFFFFF;
+    --surface:      #FFFFFF;
+    --surface-2:    #F7F9FC;
+    --border:       #E5E8EF;
+    --border-strong:#CDD3DE;
+    --divider:      #EEF1F5;
+
+    --text:      #0E1320;
+    --text-2:    #3D4458;
+    --text-3:    #6B7280;
+    --text-mute: #9AA3B2;
+  }
+
+  .dark {
+    --bg:           #14171F;
+    --bg-elev:      #1A1D27;
+    --surface:      #1F2332;
+    --surface-2:    #252A3B;
+    --border:       #2A2F40;
+    --border-strong:#3A4159;
+    --divider:      #232838;
+
+    --text:      #F2F4F8;
+    --text-2:    #C5CAD5;
+    --text-3:    #8A92A3;
+    --text-mute: #5C6478;
+
+    --c-emergency:    #F87171;
+    --c-emergency-bg: rgba(220, 38, 38, 0.12);
+    --c-warning:      #FBBF24;
+    --c-warning-bg:   rgba(217, 119, 6, 0.12);
+    --c-success:      #34D399;
+    --c-success-bg:   rgba(5, 150, 105, 0.12);
+  }
+
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+  }
+
+  body {
+    @apply bg-bg text-text;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+}
+
+@layer components {
+  .label-eyebrow {
+    @apply text-[10px] font-bold tracking-[0.12em] uppercase text-brand-500;
+  }
+  .label-caps {
+    @apply text-[11px] font-semibold tracking-[0.08em] uppercase text-text-3;
+  }
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  .smp-pulse {
+    animation: smp-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes smp-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}

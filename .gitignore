@@ -1,0 +1,30 @@
+# Python / server
+server/.venv/
+server/__pycache__/
+server/**/__pycache__/
+server/**/*.pyc
+server/**/*.pyo
+server/.env
+server/*.db
+server/audio_storage/
+
+# Node / web
+web/node_modules/
+web/dist/
+web/.env
+web/.env.local
+
+# Marshal app
+marshal-app/node_modules/
+marshal-app/dist/
+marshal-app/.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<title>SMP Race Control — Design System</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="tokens.css"/>
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; }
+  /* Make sure mockups don't get hijacked by canvas styles */
+  body { font-family: 'Inter', system-ui, sans-serif; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="browser-window.jsx"></script>
+
+<script type="text/babel" src="screens/components.jsx"></script>
+<script type="text/babel" src="screens/foundations.jsx"></script>
+<script type="text/babel" src="screens/marshal.jsx"></script>
+<script type="text/babel" src="screens/judge.jsx"></script>
+<script type="text/babel" src="screens/secretary.jsx"></script>
+<script type="text/babel" src="screens/organizer.jsx"></script>
+<script type="text/babel" src="screens/join.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+// Avoid `const { X } = window` — Babel emits a `const X` declaration
+// that collides with the function declarations the included scripts
+// already placed at script-scope. Reference everything via window.X.
+const _w = window;
+
+// — Phone frame (smaller, matches device aspect) —
+const PHONE_W = 393;
+const PHONE_H = 760; // chrome adds status bar/home indicator → ~852 total
+
+// Tablet frame for Judge (landscape iPad-like)
+const TABLET_W = 1180;
+const TABLET_H = 820;
+
+// Desktop browser frame for Secretary / Organizer
+const DESK_W = 1280;
+const DESK_H = 820;
+
+// Wrap a screen inside an iOS device frame, scaled into a fixed artboard size.
+function PhoneFrame({ dark, children }) {
+  return (
+    <div style={{
+      width: PHONE_W, height: PHONE_H + 92,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: '#f0eee9',
+    }}>
+      <IOSDevice width={PHONE_W} height={PHONE_H + 92} dark={dark}>
+        <div className={dark ? 'theme-dark smp-root' : 'smp-root'}
+          style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+          {children}
+        </div>
+      </IOSDevice>
+    </div>
+  );
+}
+
+// Lightweight macOS-style browser chrome (custom, with our typography)
+function BrowserChrome({ url, dark, children, width, height }) {
+  const chrome = {
+    bg: dark ? '#1a1d27' : '#e9ecef',
+    bd: dark ? '#2a2f40' : '#cdd3de',
+    tabBg: dark ? '#22273A' : '#fff',
+    text: dark ? '#cdd3de' : '#3D4458',
+    urlBg: dark ? '#1f2332' : '#f4f6fa',
+    urlBd: dark ? '#2a2f40' : '#cdd3de',
+  };
+  return (
+    <div style={{
+      width, height,
+      borderRadius: 12,
+      overflow: 'hidden',
+      background: chrome.bg,
+      border: `1px solid ${chrome.bd}`,
+      boxShadow: '0 20px 50px rgba(15, 17, 22, 0.18), 0 4px 10px rgba(15, 17, 22, 0.08)',
+      display: 'flex', flexDirection: 'column',
+    }}>
+      {/* title bar */}
+      <div style={{ height: 36, background: chrome.bg, display: 'flex', alignItems: 'center', padding: '0 12px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 7 }}>
+          <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f57' }}/>
+          <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#febc2e' }}/>
+          <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#28c840' }}/>
+        </div>
+        <div style={{
+          marginLeft: 16,
+          fontSize: 11, color: dark ? '#8a92a3' : '#6b7280',
+          fontFamily: 'Inter, system-ui',
+        }}>SMP Race Control</div>
+        <div style={{
+          margin: '0 16px 0 auto',
+          maxWidth: '60%',
+          padding: '5px 12px',
+          background: chrome.urlBg,
+          border: `1px solid ${chrome.urlBd}`,
+          borderRadius: 6,
+          fontSize: 11, fontFamily: 'JetBrains Mono, monospace',
+          color: chrome.text,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>{url}</div>
+      </div>
+      <div style={{ flex: 1, overflow: 'hidden' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function DesktopFrame({ url, dark, children }) {
+  return (
+    <BrowserChrome url={url} dark={dark} width={DESK_W} height={DESK_H}>
+      <div className={dark ? 'theme-dark smp-root' : 'smp-root'}
+        style={{ width: '100%', height: '100%' }}>
+        {children}
+      </div>
+    </BrowserChrome>
+  );
+}
+
+function TabletFrame({ url, dark, children }) {
+  return (
+    <BrowserChrome url={url} dark={dark} width={TABLET_W} height={TABLET_H}>
+      <div className={dark ? 'theme-dark smp-root' : 'smp-root'}
+        style={{ width: '100%', height: '100%' }}>
+        {children}
+      </div>
+    </BrowserChrome>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────
+const App = () => (
+  <DesignCanvas>
+
+    <DCSection id="foundations" title="Foundations" subtitle="Цветовые токены, типографика, голос интерфейса.">
+      <DCArtboard id="found-light" label="Light · Tokens" width={1240} height={1640}>
+        <Foundations dark={false}/>
+      </DCArtboard>
+      <DCArtboard id="found-dark" label="Dark · Tokens" width={1240} height={1640}>
+        <Foundations dark/>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="components" title="Components" subtitle="Кнопки, поля, бейджи, аудиоплеер, карточка инцидента.">
+      <DCArtboard id="comp-light" label="Light · Library" width={1240} height={1180}>
+        <Components dark={false}/>
+      </DCArtboard>
+      <DCArtboard id="comp-dark" label="Dark · Library" width={1240} height={1180}>
+        <Components dark/>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="marshal" title="Marshal · PWA" subtitle="Телефон, PTT-запись инцидентов, подтверждение текста.">
+      <DCArtboard id="m1-light-idle" label="V1 · Light · ожидание" width={PHONE_W} height={PHONE_H + 92}>
+        <PhoneFrame dark={false}><MarshalV1 state="idle"/></PhoneFrame>
+      </DCArtboard>
+      <DCArtboard id="m1-light-rec" label="V1 · Light · запись" width={PHONE_W} height={PHONE_H + 92}>
+        <PhoneFrame dark={false}><MarshalV1 state="recording" emergency/></PhoneFrame>
+      </DCArtboard>
+      <DCArtboard id="m1-light-confirm" label="V1 · Light · подтверждение" width={PHONE_W} height={PHONE_H + 92}>
+        <PhoneFrame dark={false}><MarshalV1 state="confirming"/></PhoneFrame>
+      </DCArtboard>
+      <DCArtboard id="m1-dark-rec" label="V1 · Dark · запись" width={PHONE_W} height={PHONE_H + 92}>
+        <PhoneFrame dark><MarshalV1 state="recording" emergency/></PhoneFrame>
+      </DCArtboard>
+      <DCArtboard id="m2-light-rec" label="V2 · Light · запись (waveform)" width={PHONE_W} height={PHONE_H + 92}>
+        <PhoneFrame dark={false}><MarshalV2 state="recording"/></PhoneFrame>
+      </DCArtboard>
+      <DCArtboard id="m2-light-confirm" label="V2 · Light · подтверждение" width={PHONE_W} height={PHONE_H + 92}>
+        <PhoneFrame dark={false}><MarshalV2 state="confirming"/></PhoneFrame>
+      </DCArtboard>
+      <DCArtboard id="m2-dark-rec" label="V2 · Dark · запись" width={PHONE_W} height={PHONE_H + 92}>
+        <PhoneFrame dark><MarshalV2 state="recording"/></PhoneFrame>
+      </DCArtboard>
+      <DCArtboard id="m2-dark-confirm" label="V2 · Dark · подтверждение" width={PHONE_W} height={PHONE_H + 92}>
+        <PhoneFrame dark><MarshalV2 state="confirming"/></PhoneFrame>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="judge" title="Judge · Tablet" subtitle="Планшет судьи. Лента карточек или сфокусированный режим.">
+      <DCArtboard id="j1-light" label="V1 · Light · сетка" width={TABLET_W} height={TABLET_H}>
+        <TabletFrame url="https://race.smp/judge" dark={false}><JudgeV1/></TabletFrame>
+      </DCArtboard>
+      <DCArtboard id="j1-dark" label="V1 · Dark · сетка" width={TABLET_W} height={TABLET_H}>
+        <TabletFrame url="https://race.smp/judge" dark><JudgeV1/></TabletFrame>
+      </DCArtboard>
+      <DCArtboard id="j2-light" label="V2 · Light · focus + очередь" width={TABLET_W} height={TABLET_H}>
+        <TabletFrame url="https://race.smp/judge/042" dark={false}><JudgeV2/></TabletFrame>
+      </DCArtboard>
+      <DCArtboard id="j2-dark" label="V2 · Dark · focus + emergency" width={TABLET_W} height={TABLET_H}>
+        <TabletFrame url="https://race.smp/judge/042" dark><JudgeV2 emergency/></TabletFrame>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="secretary" title="Secretary · Desktop" subtitle="Ноутбук секретаря. Live-протокол с экспортом.">
+      <DCArtboard id="sec-light" label="Light · Live-протокол" width={DESK_W} height={DESK_H}>
+        <DesktopFrame url="https://race.smp/protocol" dark={false}><Secretary/></DesktopFrame>
+      </DCArtboard>
+      <DCArtboard id="sec-dark" label="Dark · Live-протокол" width={DESK_W} height={DESK_H}>
+        <DesktopFrame url="https://race.smp/protocol" dark><Secretary/></DesktopFrame>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="organizer" title="Organizer · Desktop" subtitle="Управление гонкой, команда, посты, инвайты.">
+      <DCArtboard id="org-light" label="Light · Управление" width={DESK_W} height={DESK_H}>
+        <DesktopFrame url="https://race.smp/organize" dark={false}><Organizer/></DesktopFrame>
+      </DCArtboard>
+      <DCArtboard id="org-dark" label="Dark · Управление" width={DESK_W} height={DESK_H}>
+        <DesktopFrame url="https://race.smp/organize" dark><Organizer/></DesktopFrame>
+      </DCArtboard>
+      <DCArtboard id="org-light-invite" label="Light · QR-инвайт" width={DESK_W} height={DESK_H}>
+        <DesktopFrame url="https://race.smp/organize?invite=m3" dark={false}>
+          <Organizer showInvite/>
+        </DesktopFrame>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="join" title="Join · PWA" subtitle="Подключение по QR-инвайту. Загрузка и ошибки.">
+      <DCArtboard id="join-connect" label="Загрузка" width={PHONE_W} height={PHONE_H + 92}>
+        <PhoneFrame dark={false}><JoinPage/></PhoneFrame>
+      </DCArtboard>
+      <DCArtboard id="join-error-light" label="Ошибка · Light" width={PHONE_W} height={PHONE_H + 92}>
+        <PhoneFrame dark={false}><JoinPage error/></PhoneFrame>
+      </DCArtboard>
+      <DCArtboard id="join-error-dark" label="Ошибка · Dark" width={PHONE_W} height={PHONE_H + 92}>
+        <PhoneFrame dark><JoinPage error/></PhoneFrame>
+      </DCArtboard>
+    </DCSection>
+
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+
+</body>
+</html>
