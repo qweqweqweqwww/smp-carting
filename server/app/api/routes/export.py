@@ -117,35 +117,38 @@ async def export_pdf(race_id: int, db: AsyncSession = Depends(get_db)):
     title_style = ParagraphStyle("title", fontName="DejaVu-Bold", fontSize=16, spaceAfter=6)
     sub_style = ParagraphStyle("sub", fontName="DejaVu", fontSize=9, textColor=colors.HexColor("#555555"), spaceAfter=10)
 
+    cell_style = ParagraphStyle("cell", fontName="DejaVu", fontSize=8.5, leading=11)
+    hdr_style  = ParagraphStyle("hdr",  fontName="DejaVu-Bold", fontSize=8.5, leading=11,
+                                textColor=colors.white)
+
+    def P(text: str, style=cell_style) -> Paragraph:
+        return Paragraph(text or "", style)
+
     headers = ["#", "Пилот(ы)", "Нарушение", "Решение", "Штраф", "Пост", "Маршал", "Судья", "Время"]
     # landscape A4 = 297mm, margins 15+15 = 267mm available
-    col_widths = [10, 22, 40, 30, 32, 23, 43, 43, 22]  # sum = 265mm
+    col_widths = [10, 22, 60, 22, 35, 22, 40, 40, 18]  # sum = 269mm ≈ fits
 
-    table_data = [headers]
+    table_data = [[P(h, hdr_style) for h in headers]]
     for entry in entries:
         violation_text = entry.transcript_raw or entry.violation_type or ""
         table_data.append([
-            str(entry.sequence_number),
-            entry.pilot_numbers or "",
-            violation_text,
-            entry.decision_type or "",
-            entry.penalty_detail or "",
-            entry.post_label or "",
-            entry.marshal_name or "",
-            entry.judge_name or "",
-            entry.created_at.strftime("%H:%M:%S"),
+            P(str(entry.sequence_number)),
+            P(entry.pilot_numbers or ""),
+            P(violation_text),
+            P(entry.decision_type or ""),
+            P(entry.penalty_detail or ""),
+            P(entry.post_label or ""),
+            P(entry.marshal_name or ""),
+            P(entry.judge_name or ""),
+            P(entry.created_at.strftime("%H:%M:%S")),
         ])
 
     table = Table(table_data, colWidths=[w * mm for w in col_widths], repeatRows=1)
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F4E79")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "DejaVu-Bold"),
-        ("FONTNAME", (0, 1), (-1, -1), "DejaVu"),
-        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
         ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CCCCCC")),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#EAF2FF")]),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING", (0, 0), (-1, -1), 5),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("LEFTPADDING", (0, 0), (-1, -1), 4),

@@ -6,14 +6,9 @@ interface Props {
   entries: ProtocolEntry[];
 }
 
-function DecisionPill({ type, detail }: { type: string; detail?: string | null }) {
+function DecisionPill({ type }: { type: string }) {
   const m = DECISION_RU[type] ?? { tone: "neutral" as const, label: type };
-  return (
-    <div className="inline-flex items-center gap-1.5">
-      <Pill tone={m.tone}>{m.label}</Pill>
-      {detail && <span className="font-mono text-[11.5px] font-semibold text-text-2">{detail}</span>}
-    </div>
-  );
+  return <Pill tone={m.tone}>{m.label}</Pill>;
 }
 
 export function ProtocolTable({ entries }: Props) {
@@ -25,7 +20,7 @@ export function ProtocolTable({ entries }: Props) {
     );
   }
 
-  const cols = ["#", "Время", "Пилоты", "Нарушение", "Решение", "Пост", "Маршал", "Судья"];
+  const cols = ["#", "Время", "Пилоты", "Нарушение", "Решение", "Штраф", "Пост", "Маршал", "Судья"];
 
   return (
     <div className="overflow-x-auto rounded-md border border-border bg-surface">
@@ -74,7 +69,10 @@ export function ProtocolTable({ entries }: Props) {
                 )}
               </td>
               <td className="px-3.5 py-2.5">
-                <DecisionPill type={entry.decision_type} detail={entry.penalty_detail} />
+                <DecisionPill type={entry.decision_type} />
+              </td>
+              <td className="px-3.5 py-2.5 font-mono text-[12px] font-semibold text-text-2 max-w-[160px]">
+                {entry.penalty_detail || <span className="text-text-mute">—</span>}
               </td>
               <td className="px-3.5 py-2.5 font-mono font-semibold text-text-2">{entry.post_label}</td>
               <td className="px-3.5 py-2.5 text-text-2">{entry.marshal_name}</td>
