@@ -28,3 +28,6 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Design handoff (one-time brief, already implemented)
+design_handoff/

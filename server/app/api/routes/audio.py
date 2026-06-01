@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
@@ -20,9 +21,7 @@ async def stream_audio(incident_id: int, db: AsyncSession = Depends(get_db)):
     Used by the judge tablet's audio player.
     """
     result = await db.execute(
-        __import__("sqlalchemy", fromlist=["select"]).select(AudioFile).where(
-            AudioFile.incident_id == incident_id
-        )
+        select(AudioFile).where(AudioFile.incident_id == incident_id)
     )
     audio = result.scalar_one_or_none()
     if not audio:

@@ -6,7 +6,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { ProtocolTable } from "../../components/secretary/ProtocolTable";
 import { AppShell } from "../../components/common/AppShell";
 import { KpiCard } from "../../components/common/KpiCard";
-import { getRace } from "../../api/races";
+import { getRace, finishRace } from "../../api/races";
 import { getProtocol, exportExcel, exportPdf } from "../../api/incidents";
 import type { WsMessage, ProtocolEntry, ProtocolNewPayload, RaceStatus } from "../../types";
 
@@ -41,6 +41,7 @@ export function SecretaryDashboard() {
   const [filter, setFilter] = useState<Filter>("Все");
   const [search, setSearch] = useState("");
   const [raceInfo, setRaceInfo] = useState<{ name: string; status: RaceStatus } | undefined>(undefined);
+  const [finishing, setFinishing] = useState(false);
 
   useEffect(() => {
     if (!RACE_ID) return;
@@ -102,6 +103,17 @@ export function SecretaryDashboard() {
     downloadBlob(resp.data, `protocol_race_${RACE_ID}.pdf`);
   };
 
+  const handleFinishRace = async () => {
+    if (!confirm("Завершить гонку? Действие нельзя отменить.")) return;
+    setFinishing(true);
+    try {
+      await finishRace(RACE_ID);
+      setRaceInfo((prev) => prev ? { ...prev, status: "finished" } : prev);
+    } finally {
+      setFinishing(false);
+    }
+  };
+
   const FILTER_TO_TYPE: Record<Filter, string | null> = {
     "Все": null, "Штраф": "penalty", "Предупр.": "warning", "Снято": "dismiss",
   };
@@ -152,10 +164,16 @@ export function SecretaryDashboard() {
               <DownloadIcon />
               PDF
             </button>
-            <button className="flex items-center gap-2 rounded-sm bg-brand-500 px-3.5 py-2 text-[12px] font-bold text-white hover:bg-brand-600 transition-colors">
-              <FlagIcon />
-              Завершить гонку
-            </button>
+            {raceInfo?.status === "active" && (
+              <button
+                onClick={handleFinishRace}
+                disabled={finishing}
+                className="flex items-center gap-2 rounded-sm bg-brand-500 px-3.5 py-2 text-[12px] font-bold text-white hover:bg-brand-600 disabled:opacity-50 transition-colors"
+              >
+                <FlagIcon />
+                {finishing ? "Завершение…" : "Завершить гонку"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -165,7 +183,7 @@ export function SecretaryDashboard() {
           <KpiCard label="Штрафов"  value={penalties}  tone="danger"   sub={liveEntries.length ? `${Math.round(penalties / liveEntries.length * 100)}%` : undefined} />
           <KpiCard label="Предупр." value={warnings}   tone="warning"  sub={liveEntries.length ? `${Math.round(warnings / liveEntries.length * 100)}%` : undefined} />
           <KpiCard label="Снято"    value={dismissed}  tone="success"  sub={liveEntries.length ? `${Math.round(dismissed / liveEntries.length * 100)}%` : undefined} />
-          <KpiCard label="Аварий"   value={liveEntries.filter(e => e.violation_type === "emergency").length} tone="danger" />
+          <KpiCard label="Аварий"   value={liveEntries.filter(e => e.violation_type === "unsafe_driving" || e.violation_type === "collision").length} tone="danger" />
         </div>
 
         {/* Filter bar */}

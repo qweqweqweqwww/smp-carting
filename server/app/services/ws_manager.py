@@ -45,7 +45,6 @@ class ConnectionManager:
         logger.info("Client connected to channel '%s'", channel)
 
     def disconnect_marshal(self, websocket: WebSocket, user_id: int) -> None:
-        self._marshals[user_id].discard(websocket) if hasattr(self._marshals[user_id], "discard") else None
         try:
             self._marshals[user_id].remove(websocket)
         except ValueError:

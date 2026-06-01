@@ -9,19 +9,11 @@ import { Pill } from "../../components/common/Pill";
 import { KpiCard } from "../../components/common/KpiCard";
 import { decideIncident, getIncidents, getProtocol } from "../../api/incidents";
 import { getRace } from "../../api/races";
+import { VIOLATION_RU, DECISION_RU } from "../../utils/labels";
 import type {
   WsMessage, IncidentNewPayload, DecisionType, RaceStatus,
   Incident, ProtocolEntry,
 } from "../../types";
-
-const VIOLATION_RU: Record<string, string> = {
-  collision:      "Столкновение",
-  track_limits:   "Срез трассы",
-  false_start:    "Фальстарт",
-  unsafe_driving: "Опасное вождение",
-  blocking:       "Блокировка",
-  other:          "Другое",
-};
 
 function incidentToPayload(incident: Incident, posts: { id: number; label: string }[]): IncidentNewPayload {
   const post = posts.find((p) => p.id === incident.post_id);
@@ -131,12 +123,6 @@ export function JudgeDashboard() {
   const selected = incidents.find((i) => i.incident_id === selectedId) ?? incidents[0] ?? null;
   const pendingCount = incidents.length;
 
-  const DECISION_PILL: Record<string, { tone: "danger" | "warning" | "neutral"; label: string }> = {
-    penalty: { tone: "danger",  label: "Штраф"     },
-    warning: { tone: "warning", label: "Предупр."  },
-    dismiss: { tone: "neutral", label: "Снят"      },
-  };
-
   return (
     <AppShell raceInfo={raceInfo}>
       {emergency && (
@@ -224,7 +210,7 @@ export function JudgeDashboard() {
                 <div className="label-caps mb-3">Принятые решения · {decidedEntries.length}</div>
                 <div className="flex flex-col gap-1.5">
                   {[...decidedEntries].reverse().map((d) => {
-                    const pill = DECISION_PILL[d.decision_type] ?? { tone: "neutral" as const, label: d.decision_type };
+                    const pill = DECISION_RU[d.decision_type] ?? { tone: "neutral" as const, label: d.decision_type };
                     return (
                       <div key={d.id} className="flex items-center gap-2.5 rounded-md border border-border bg-surface px-3 py-2 text-[11.5px]">
                         <span className="font-mono text-[10.5px] text-text-3 w-8">#{d.incident_id}</span>

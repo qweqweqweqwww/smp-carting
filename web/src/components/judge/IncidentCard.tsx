@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Pill } from "../common/Pill";
+import { VIOLATION_RU } from "../../utils/labels";
 import type { IncidentNewPayload, DecisionType } from "../../types";
 
 interface Props {
@@ -7,15 +8,6 @@ interface Props {
   onDecide: (type: DecisionType, penaltyDetail?: string) => Promise<void>;
   big?: boolean;
 }
-
-const VIOLATION_RU: Record<string, string> = {
-  collision:      "Столкновение",
-  track_limits:   "Срез трассы",
-  false_start:    "Фальстарт",
-  unsafe_driving: "Опасное вождение",
-  blocking:       "Блокировка",
-  other:          "Другое",
-};
 
 export function IncidentCard({ payload, onDecide, big = false }: Props) {
   const [penaltyDetail, setPenaltyDetail] = useState("");

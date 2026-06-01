@@ -1,26 +1,13 @@
 import { Pill } from "../common/Pill";
+import { VIOLATION_RU, DECISION_RU } from "../../utils/labels";
 import type { ProtocolEntry } from "../../types";
 
 interface Props {
   entries: ProtocolEntry[];
 }
 
-const VIOLATION_RU: Record<string, string> = {
-  collision:      "Столкновение",
-  track_limits:   "Срез трассы",
-  false_start:    "Фальстарт",
-  unsafe_driving: "Опасное вождение",
-  blocking:       "Блокировка",
-  other:          "Другое",
-};
-
 function DecisionPill({ type, detail }: { type: string; detail?: string | null }) {
-  const map: Record<string, { tone: "danger" | "warning" | "neutral"; label: string }> = {
-    penalty: { tone: "danger",   label: "Штраф" },
-    warning: { tone: "warning",  label: "Предупр." },
-    dismiss: { tone: "neutral",  label: "Снят" },
-  };
-  const m = map[type] ?? { tone: "neutral" as const, label: type };
+  const m = DECISION_RU[type] ?? { tone: "neutral" as const, label: type };
   return (
     <div className="inline-flex items-center gap-1.5">
       <Pill tone={m.tone}>{m.label}</Pill>

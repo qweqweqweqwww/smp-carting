@@ -2,6 +2,7 @@
 Application factory and startup/shutdown lifecycle.
 """
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,12 +23,22 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting %s v%s", settings.APP_NAME, settings.APP_VERSION)
+    await init_db()
+    settings.AUDIO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    logger.info("Database ready. Audio storage: %s", settings.AUDIO_STORAGE_DIR.resolve())
+    yield
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.APP_VERSION,
         docs_url="/docs" if settings.DEBUG else None,
         redoc_url="/redoc" if settings.DEBUG else None,
+        lifespan=lifespan,
     )
 
     # CORS (all origins allowed on local Wi-Fi; tighten for internet-facing)
@@ -49,13 +60,6 @@ def create_app() -> FastAPI:
     # WebSocket routes (no prefix — path is /ws/...)
     app.include_router(marshal_ws.router)
     app.include_router(role_ws.router)
-
-    @app.on_event("startup")
-    async def on_startup() -> None:
-        logger.info("Starting %s v%s", settings.APP_NAME, settings.APP_VERSION)
-        await init_db()
-        settings.AUDIO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-        logger.info("Database ready. Audio storage: %s", settings.AUDIO_STORAGE_DIR.resolve())
 
     @app.get("/health")
     async def health() -> dict:

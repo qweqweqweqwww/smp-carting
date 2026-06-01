@@ -5,8 +5,6 @@ import type { DecisionType } from "../types";
 export const getIncidents = (raceId: number) =>
   api.get<Incident[]>("/incidents/", { params: { race_id: raceId } }).then((r) => r.data);
 
-export const getIncident = (id: number) =>
-  api.get<Incident>(`/incidents/${id}`).then((r) => r.data);
 
 export const decideIncident = (
   incidentId: number,

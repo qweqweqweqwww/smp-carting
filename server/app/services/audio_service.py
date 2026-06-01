@@ -67,11 +67,6 @@ async def _convert_wav_to_ogg(src: Path, dst: Path) -> None:
         raise RuntimeError(f"ffmpeg conversion failed: {stderr.decode()}")
 
 
-def get_audio_path(race_id: int, incident_id: int) -> Path | None:
-    path = _storage_path(race_id, incident_id)
-    return path if path.exists() else None
-
-
 async def get_duration(path: Path) -> float | None:
     """Use ffprobe to get duration in seconds."""
     try:
