@@ -60,9 +60,9 @@ export function IncidentCard({ payload, onDecide, big = false }: Props) {
         </div>
 
         {/* Transcript */}
-        {payload.free_text && (
+        {(payload.transcript_raw || payload.free_text) && (
           <blockquote className="m-0 rounded border-l-2 border-border-strong bg-surface-2 px-3 py-2 text-[12px] italic leading-relaxed text-text-2">
-            «{payload.free_text}»
+            «{payload.transcript_raw ?? payload.free_text}»
           </blockquote>
         )}
 

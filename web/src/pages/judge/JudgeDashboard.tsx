@@ -23,6 +23,7 @@ function incidentToPayload(incident: Incident, posts: { id: number; label: strin
       ? incident.pilot_numbers.split(",").map((s) => Number(s.trim())).filter((n) => !isNaN(n))
       : [],
     violation_type: incident.violation_type ?? null,
+    transcript_raw: incident.transcript_raw ?? null,
     free_text: incident.free_text ?? null,
     is_emergency: incident.is_emergency,
     post_id: incident.post_id,

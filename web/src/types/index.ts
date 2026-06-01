@@ -108,6 +108,7 @@ export interface IncidentNewPayload {
   incident_id: number;
   pilot_numbers: number[];
   violation_type: ViolationType | null;
+  transcript_raw: string | null;
   free_text: string | null;
   is_emergency: boolean;
   post_id: number;

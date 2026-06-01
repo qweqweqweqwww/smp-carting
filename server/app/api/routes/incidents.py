@@ -122,6 +122,7 @@ async def confirm_incident(
         "incident_id": incident.id,
         "pilot_numbers": body.pilot_numbers,
         "violation_type": incident.violation_type.value if incident.violation_type else None,
+        "transcript_raw": incident.transcript_raw,
         "free_text": incident.free_text,
         "is_emergency": incident.is_emergency,
         "post_id": incident.post_id,
