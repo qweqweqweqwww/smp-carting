@@ -7,12 +7,12 @@ import { EmergencyBanner } from "../../components/common/EmergencyBanner";
 import { AppShell } from "../../components/common/AppShell";
 import { Pill } from "../../components/common/Pill";
 import { KpiCard } from "../../components/common/KpiCard";
-import { decideIncident, getIncidents, getProtocol } from "../../api/incidents";
+import { decideIncident, decideSplitIncident, getIncidents, getProtocol } from "../../api/incidents";
 import { getRace } from "../../api/races";
 import { VIOLATION_RU, DECISION_RU } from "../../utils/labels";
 import type {
   WsMessage, IncidentNewPayload, DecisionType, RaceStatus,
-  Incident, ProtocolEntry,
+  Incident, ProtocolEntry, SplitDecisionItem,
 } from "../../types";
 
 function incidentToPayload(incident: Incident, posts: { id: number; label: string }[]): IncidentNewPayload {
@@ -93,30 +93,67 @@ export function JudgeDashboard() {
   useWebSocket("judge", sessionToken ?? "", handleMessage);
 
   const handleDecide = useCallback(
-    async (incidentId: number, type: DecisionType, penaltyDetail?: string) => {
+    async (incidentId: number, type: DecisionType, penaltyDetail?: string, assignedPilotNumber?: string) => {
       if (!user) return;
-      await decideIncident(incidentId, user.id, { decision_type: type, penalty_detail: penaltyDetail ?? undefined });
+      await decideIncident(incidentId, user.id, {
+        decision_type: type,
+        penalty_detail: penaltyDetail ?? undefined,
+        assigned_pilot_number: assignedPilotNumber ?? undefined,
+      });
+      const incident = incidents.find(i => i.incident_id === incidentId);
       setIncidents((prev) => {
         const next = prev.filter((i) => i.incident_id !== incidentId);
         setSelectedId(next[0]?.incident_id ?? null);
         return next;
       });
-      // Optimistically add to decided list (full protocol will be reloaded on next mount)
       setDecidedEntries((prev) => [{
         id: Date.now(),
         incident_id: incidentId,
         race_id: raceId,
         sequence_number: prev.length + 1,
-        pilot_numbers: incidents.find(i => i.incident_id === incidentId)?.pilot_numbers.join(",") ?? "",
+        pilot_numbers: assignedPilotNumber ?? incident?.pilot_numbers.join(",") ?? "",
         violation_type: "",
         transcript_raw: null,
         decision_type: type,
         penalty_detail: penaltyDetail ?? null,
-        post_label: incidents.find(i => i.incident_id === incidentId)?.post_label ?? "",
+        post_label: incident?.post_label ?? "",
         marshal_name: "",
         judge_name: user.name,
         created_at: new Date().toISOString(),
       }, ...prev]);
+    },
+    [user, incidents, raceId]
+  );
+
+  const handleDecideSplit = useCallback(
+    async (incidentId: number, decisions: SplitDecisionItem[]) => {
+      if (!user) return;
+      await decideSplitIncident(incidentId, user.id, decisions);
+      const incident = incidents.find(i => i.incident_id === incidentId);
+      setIncidents((prev) => {
+        const next = prev.filter((i) => i.incident_id !== incidentId);
+        setSelectedId(next[0]?.incident_id ?? null);
+        return next;
+      });
+      const now = new Date().toISOString();
+      setDecidedEntries((prev) => [
+        ...decisions.map((d, idx) => ({
+          id: Date.now() + idx,
+          incident_id: incidentId,
+          race_id: raceId,
+          sequence_number: prev.length + idx + 1,
+          pilot_numbers: d.pilot_number,
+          violation_type: "",
+          transcript_raw: null,
+          decision_type: d.decision_type,
+          penalty_detail: d.penalty_detail ?? null,
+          post_label: incident?.post_label ?? "",
+          marshal_name: "",
+          judge_name: user.name,
+          created_at: now,
+        })),
+        ...prev,
+      ]);
     },
     [user, incidents, raceId]
   );
@@ -273,7 +310,10 @@ export function JudgeDashboard() {
                 <IncidentCard
                   payload={selected}
                   big
-                  onDecide={(type, penalty) => handleDecide(selected.incident_id, type, penalty)}
+                  onDecide={(type, penalty, assignedPilot) =>
+                    handleDecide(selected.incident_id, type, penalty, assignedPilot)
+                  }
+                  onDecideSplit={(decisions) => handleDecideSplit(selected.incident_id, decisions)}
                 />
               </div>
             </>

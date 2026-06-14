@@ -57,7 +57,7 @@ class Incident(Base):
     race: Mapped["Race"] = relationship("Race", back_populates="incidents")  # noqa: F821
     audio_file: Mapped["AudioFile | None"] = relationship("AudioFile", back_populates="incident", uselist=False)  # noqa: F821
     decision: Mapped["Decision | None"] = relationship("Decision", back_populates="incident", uselist=False)
-    protocol_entry: Mapped["ProtocolEntry | None"] = relationship("ProtocolEntry", back_populates="incident", uselist=False)
+    protocol_entries: Mapped[list["ProtocolEntry"]] = relationship("ProtocolEntry", back_populates="incident", uselist=True)
 
 
 class Decision(Base):
@@ -78,11 +78,12 @@ class Decision(Base):
 
 
 class ProtocolEntry(Base):
-    """Secretary-visible immutable record written after each decision."""
+    """Secretary-visible immutable record written after each decision.
+    One incident may produce multiple entries when the judge splits a decision."""
     __tablename__ = "protocol_entries"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    incident_id: Mapped[int] = mapped_column(ForeignKey("incidents.id", ondelete="CASCADE"), unique=True)
+    incident_id: Mapped[int] = mapped_column(ForeignKey("incidents.id", ondelete="CASCADE"))
     race_id: Mapped[int] = mapped_column(ForeignKey("races.id"), nullable=False)
     sequence_number: Mapped[int] = mapped_column(Integer, nullable=False)  # monotone per race
     pilot_numbers: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -97,4 +98,4 @@ class ProtocolEntry(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    incident: Mapped["Incident"] = relationship("Incident", back_populates="protocol_entry")
+    incident: Mapped["Incident"] = relationship("Incident", back_populates="protocol_entries")

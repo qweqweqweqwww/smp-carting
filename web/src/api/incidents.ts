@@ -1,5 +1,5 @@
 import { api } from "./client";
-import type { Incident, Decision, ProtocolEntry } from "../types";
+import type { Incident, Decision, ProtocolEntry, SplitDecisionItem } from "../types";
 import type { DecisionType } from "../types";
 
 export const getIncidents = (raceId: number) =>
@@ -9,10 +9,23 @@ export const getIncidents = (raceId: number) =>
 export const decideIncident = (
   incidentId: number,
   judgeId: number,
-  body: { decision_type: DecisionType; penalty_detail?: string; notes?: string }
+  body: { decision_type: DecisionType; penalty_detail?: string; notes?: string; assigned_pilot_number?: string }
 ) =>
   api
     .post<Decision>(`/incidents/${incidentId}/decide`, body, { params: { judge_id: judgeId } })
+    .then((r) => r.data);
+
+export const decideSplitIncident = (
+  incidentId: number,
+  judgeId: number,
+  decisions: SplitDecisionItem[]
+) =>
+  api
+    .post<ProtocolEntry[]>(
+      `/incidents/${incidentId}/decide-split`,
+      { decisions },
+      { params: { judge_id: judgeId } }
+    )
     .then((r) => r.data);
 
 export const getProtocol = (raceId: number) =>

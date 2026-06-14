@@ -41,6 +41,17 @@ class DecisionCreate(BaseModel):
     decision_type: DecisionType
     penalty_detail: str | None = None
     notes: str | None = None
+    assigned_pilot_number: str | None = None  # if set, overrides incident.pilot_numbers in ProtocolEntry
+
+
+class SplitDecisionItem(BaseModel):
+    pilot_number: str
+    decision_type: DecisionType
+    penalty_detail: str | None = None
+
+
+class DecisionSplitCreate(BaseModel):
+    decisions: list[SplitDecisionItem]
 
 
 class DecisionRead(BaseModel):

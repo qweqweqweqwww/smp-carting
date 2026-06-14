@@ -127,3 +127,9 @@ export interface ProtocolNewPayload {
   penalty_detail: string | null;
   post_label: string;
 }
+
+export interface SplitDecisionItem {
+  pilot_number: string;
+  decision_type: DecisionType;
+  penalty_detail?: string | null;
+}

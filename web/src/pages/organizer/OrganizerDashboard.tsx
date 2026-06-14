@@ -399,6 +399,7 @@ export function OrganizerDashboard() {
   const [createPasswordFor, setCreatePasswordFor] = useState<{ role: UserRole } | null>(null);
   const [newUserName, setNewUserName] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
+  const [printingAllQR, setPrintingAllQR] = useState(false);
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const { data: races = [] } = useQuery({ queryKey: ["races"], queryFn: getRaces });
@@ -498,6 +499,75 @@ export function OrganizerDashboard() {
       : window.location.origin;
     const inv = await createInvite(inviteUser.id, baseUrl);
     setInvite(inv);
+  };
+
+  const handlePrintAllQR = async () => {
+    if (marshals.length === 0 || printingAllQR || !selectedRace) return;
+    setPrintingAllQR(true);
+    try {
+      const baseUrl = import.meta.env.VITE_MARSHAL_APP_URL ?? window.location.origin;
+      const items = await Promise.all(
+        marshals.map(async (m) => {
+          const inv = await createInvite(m.id, baseUrl);
+          return { user: m, invite: inv };
+        })
+      );
+
+      const win = window.open("", "_blank", "width=840,height=960");
+      if (!win) return;
+
+      const qrItems = items
+        .map(
+          ({ user, invite }) => `
+          <div class="card">
+            <div class="name">${user.name}</div>
+            <div class="role">Маршал</div>
+            <img src="${invite.qr_code_url}" alt="QR" />
+            <div class="url">${invite.invite_url}</div>
+            <div class="hint">Действует до: ${new Date(invite.expires_at).toLocaleString("ru-RU")}</div>
+          </div>`
+        )
+        .join("");
+
+      win.document.write(`
+        <html>
+        <head>
+          <title>QR-инвайты маршалов — ${selectedRace.name}</title>
+          <style>
+            body { font-family: system-ui, sans-serif; padding: 24px; background: #fff; }
+            h2 { font-size: 18px; font-weight: 700; margin: 0 0 20px; }
+            .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+            .card {
+              border: 1px solid #d4d4d4; border-radius: 10px; padding: 22px 18px;
+              text-align: center; page-break-inside: avoid; break-inside: avoid;
+            }
+            .name { font-size: 17px; font-weight: 700; margin-bottom: 3px; }
+            .role { font-size: 12px; color: #888; margin-bottom: 14px; }
+            img { width: 190px; height: 190px; margin: 0 auto; display: block; }
+            .url {
+              font-size: 9.5px; font-family: monospace; word-break: break-all;
+              color: #555; margin-top: 12px; border: 1px solid #e5e5e5;
+              padding: 6px 8px; border-radius: 4px; text-align: left;
+            }
+            .hint { font-size: 11px; color: #aaa; margin-top: 8px; }
+            @media print {
+              body { padding: 0; }
+              .card { page-break-inside: avoid; break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          <h2>QR-инвайты маршалов — ${selectedRace.name}</h2>
+          <div class="grid">${qrItems}</div>
+        </body>
+        </html>
+      `);
+      win.document.close();
+      win.focus();
+      win.print();
+    } finally {
+      setPrintingAllQR(false);
+    }
   };
 
   const handleAddPost = (x: number, y: number) => {
@@ -686,12 +756,24 @@ export function OrganizerDashboard() {
                 <div className="rounded-lg border border-border bg-surface p-5">
                   <div className="mb-4 flex items-center justify-between">
                     <div className="label-eyebrow">Маршалы гонки</div>
-                    <button
-                      onClick={() => handleAddUser("marshal")}
-                      className="flex items-center gap-1.5 rounded-sm border border-border bg-surface-2 px-2.5 py-1.5 text-[11.5px] font-semibold text-text-2 hover:bg-surface hover:border-border-strong transition-colors"
-                    >
-                      <PlusIcon /> Маршал
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {marshals.length > 0 && (
+                        <button
+                          onClick={handlePrintAllQR}
+                          disabled={printingAllQR}
+                          title="Открыть страницу печати QR-кодов всех маршалов"
+                          className="flex items-center gap-1.5 rounded-sm border border-border bg-surface-2 px-2.5 py-1.5 text-[11.5px] font-semibold text-text-2 hover:bg-surface hover:border-border-strong disabled:opacity-50 transition-colors"
+                        >
+                          {printingAllQR ? "Генерация…" : "QR · Все"}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleAddUser("marshal")}
+                        className="flex items-center gap-1.5 rounded-sm border border-border bg-surface-2 px-2.5 py-1.5 text-[11.5px] font-semibold text-text-2 hover:bg-surface hover:border-border-strong transition-colors"
+                      >
+                        <PlusIcon /> Маршал
+                      </button>
+                    </div>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     {marshals.map((u) => {

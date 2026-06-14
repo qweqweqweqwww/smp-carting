@@ -18,7 +18,9 @@ from app.models.audio import AudioFile
 from app.models.user import User
 from app.models.race import Post
 from app.schemas.incident import (
-    TranscriptResult, IncidentConfirm, IncidentRead, DecisionCreate, DecisionRead, ProtocolEntryRead
+    TranscriptResult, IncidentConfirm, IncidentRead,
+    DecisionCreate, DecisionRead, ProtocolEntryRead,
+    DecisionSplitCreate,
 )
 from app.services import audio_service
 from app.services.asr import whisper_service
@@ -158,7 +160,7 @@ async def decide_incident(
     decision = Decision(
         incident_id=incident_id,
         judge_id=judge_id,
-        **body.model_dump(),
+        **body.model_dump(exclude={"assigned_pilot_number"}),
     )
     db.add(decision)
     incident.status = IncidentStatus.DECIDED
@@ -174,11 +176,14 @@ async def decide_incident(
     )
     seq_num = (seq_result.scalar() or 0) + 1
 
+    # Use judge-assigned pilot number if provided, otherwise fall back to incident's pilot numbers
+    effective_pilots = body.assigned_pilot_number or (incident.pilot_numbers or "")
+
     protocol = ProtocolEntry(
         incident_id=incident_id,
         race_id=incident.race_id,
         sequence_number=seq_num,
-        pilot_numbers=incident.pilot_numbers or "",
+        pilot_numbers=effective_pilots,
         violation_type=incident.violation_type.value if incident.violation_type else "",
         transcript_raw=incident.transcript_raw,
         decision_type=body.decision_type.value,
@@ -195,7 +200,7 @@ async def decide_incident(
     await manager.broadcast_to_channel("secretary", "protocol.new", {
         "incident_id": incident_id,
         "sequence_number": seq_num,
-        "pilot_numbers": incident.pilot_numbers,
+        "pilot_numbers": effective_pilots,
         "violation_type": incident.violation_type.value if incident.violation_type else "",
         "transcript_raw": incident.transcript_raw,
         "decision_type": body.decision_type.value,
@@ -204,6 +209,84 @@ async def decide_incident(
     })
 
     return decision
+
+
+@router.post("/{incident_id}/decide-split", response_model=list[ProtocolEntryRead])
+async def decide_split_incident(
+    incident_id: int,
+    body: DecisionSplitCreate,
+    judge_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Judge issues separate decisions for individual pilots in one incident.
+    Creates one Decision record (for the incident) and N ProtocolEntry records
+    (one per split item), then notifies the secretary for each entry.
+    """
+    incident = await db.get(Incident, incident_id)
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    if incident.status != IncidentStatus.CONFIRMED:
+        raise HTTPException(status_code=400, detail="Incident not in CONFIRMED state")
+    if not body.decisions:
+        raise HTTPException(status_code=400, detail="decisions list cannot be empty")
+
+    judge = await db.get(User, judge_id)
+    marshal = await db.get(User, incident.marshal_id)
+    post = await db.get(Post, incident.post_id)
+
+    # One Decision record marks the incident as settled; use the first item's type
+    decision = Decision(
+        incident_id=incident_id,
+        judge_id=judge_id,
+        decision_type=body.decisions[0].decision_type,
+        penalty_detail=body.decisions[0].penalty_detail,
+        notes=f"split:{len(body.decisions)}",
+    )
+    db.add(decision)
+    await db.flush()
+
+    created_entries: list[ProtocolEntry] = []
+
+    for item in body.decisions:
+        seq_result = await db.execute(
+            select(sqlfunc.count(ProtocolEntry.id)).where(ProtocolEntry.race_id == incident.race_id)
+        )
+        seq_num = (seq_result.scalar() or 0) + 1
+
+        protocol = ProtocolEntry(
+            incident_id=incident_id,
+            race_id=incident.race_id,
+            sequence_number=seq_num,
+            pilot_numbers=item.pilot_number,
+            violation_type=incident.violation_type.value if incident.violation_type else "",
+            transcript_raw=incident.transcript_raw,
+            decision_type=item.decision_type.value,
+            penalty_detail=item.penalty_detail,
+            post_label=post.label if post else "",
+            marshal_name=marshal.name if marshal else "",
+            judge_name=judge.name if judge else "",
+        )
+        db.add(protocol)
+        await db.flush()
+        await db.refresh(protocol)
+        created_entries.append(protocol)
+
+        await manager.broadcast_to_channel("secretary", "protocol.new", {
+            "incident_id": incident_id,
+            "sequence_number": seq_num,
+            "pilot_numbers": item.pilot_number,
+            "violation_type": incident.violation_type.value if incident.violation_type else "",
+            "transcript_raw": incident.transcript_raw,
+            "decision_type": item.decision_type.value,
+            "penalty_detail": item.penalty_detail,
+            "post_label": post.label if post else "",
+        })
+
+    incident.status = IncidentStatus.DECIDED
+    await db.flush()
+
+    return created_entries
 
 
 @router.get("/protocol", response_model=list[ProtocolEntryRead])
